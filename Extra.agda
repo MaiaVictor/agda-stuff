@@ -1,56 +1,77 @@
 module Extra where
 
-open import Prelude.Product using (_,_; _×_)
-open import Prelude.Vec
-open import Prelude.List
-open import Prelude.Nat
-open import Prelude.Nat.Properties
-open import Prelude.Product
-open import Prelude.Equality
-open import Agda.Builtin.Equality
+{-open import Prelude-}
+{-open import Numeric.Nat.DivMod-}
 
-call : {a : Set} -> Nat -> (a -> a) -> a -> a
+open import Data.Fin hiding (_+_)
+open import Data.Vec
+open import Data.Bool hiding (_≟_)
+open import Data.Nat
+open import Data.Nat.Properties
+open import Data.Nat.DivMod
+open import Data.Empty
+open import Data.Product
+open import Relation.Binary.PropositionalEquality
+open import Relation.Nullary.Decidable
+
+call : {a : Set} → ℕ → (a → a) → a → a
 call zero    f x = x
 call (suc n) f x = f (call n f x)
 
-listRoundIndex : {A : Set} -> Nat -> A -> List A -> A
-listRoundIndex {A} n x xs = go n xs where
-  go : Nat -> List A -> A
-  go (suc n) (x ∷ xs) = go n xs
-  go (suc n) []       = go n xs
-  go zero    (x ∷ xs) = x
-  go zero    []       = x
+NonZero : ℕ -> Set
+NonZero n = False (n ≟ 0)
 
-listGenerate : {A : Set} -> Nat -> (Nat -> A) -> List A
-listGenerate {A} n f = go zero n where
-  go : Nat -> Nat -> List A
-  go zero    i = []
-  go (suc n) i = f i ∷ go n (suc i)
+roundLookup : {A : Set} → {w : ℕ} → {w≢0 : NonZero w} → ℕ → Vec A w → A
+roundLookup {A} {w} {w≢0} n vec = lookup (_mod_ n w {≢0 = w≢0}) vec
 
-vecSplit : {A : Set} -> {n : Nat} -> {m : Nat} -> Vec A (n +N m) -> Vec A n × Vec A m
-vecSplit {A} {zero}    {m} x∷xs     = [] , x∷xs
-vecSplit {A} {(suc n)} {m} (x ∷ xs) = 
-  let parts = vecSplit {A} {n} {m} xs
-      part0 = x ∷ fst parts
-      part1 = snd parts
-  in part0 , part1
+roundLookup₂ : {A : Set} → {w : ℕ} → {w>0 : NonZero w} → {h : ℕ} → {h>0 : NonZero h} → ℕ → ℕ → Vec (Vec A w) h → A
+roundLookup₂ {A} {w} {w≢0} {h} {h≢0} x y mat = roundLookup {w = w} {w≢0 = w≢0} x (roundLookup {w = h} {w≢0 = h≢0} y mat)
 
-vecCommuteSize : {A : Set} -> (n : Nat) -> (m : Nat) -> Vec A (n +N m) -> Vec A (m +N n)
-vecCommuteSize {A} n m = transport (\ x -> Vec A x) (add-commute n m)
+diff : {a : ℕ} → {b : Fin a} → ∃ λ c → toℕ b + c ≡ a
+diff {zero}  {()}
+diff {suc a} {zero}  = suc a , refl
+diff {suc a} {suc b} with diff {a} {b}
+... | c , prf = c , cong suc prf
 
-vecRotateLeft : {A : Set} -> {m : Nat} -> (n : Nat) -> Vec A (n +N m) -> Vec A (n +N m)
-vecRotateLeft {A} {m} n x∷xs =
-  let parts = vecSplit {A} {n} {m} x∷xs
-  in  vecCommuteSize m n (snd parts v++ fst parts)
+rotate : {A : Set} → {w : ℕ} → {w≢0 : NonZero w} → Bool → ℕ → Vec A w → Vec A w
+rotate {A} {w} {w≢0} left n v =
+  let m  = _mod_ n w {w≢0}
+      d  = diff {w} {m}
+      d₁ = proj₁ d
+      d₂ = proj₂ d
+      d₃ = subst (λ x → x ≡ w) (+-comm (toℕ (n mod w)) d₁) d₂
+      v₁ = subst (λ x → Vec A x) (sym d₂) v
+      v₂ = subst (λ x → Vec A x) (sym d₃) v
+      s₁ = splitAt {A = A} (toℕ m) {n = d₁} v₁
+      s₂ = splitAt {A = A} d₁ {n = (toℕ m)} v₂
+      l₁ = proj₁ (proj₂ s₁)
+      r₁ = proj₁ s₁
+      o₁ = subst (λ x → Vec A x) d₃ (l₁ ++ r₁)
+      l₂ = proj₁ (proj₂ s₂)
+      r₂ = proj₁ s₂
+      o₂ = subst (λ x → Vec A x) d₂ (l₂ ++ r₂)
+  in  if left then o₁ else o₂
 
-vecRotateRight : {A : Set} -> {m : Nat} -> (n : Nat) -> Vec A (n +N m) -> Vec A (n +N m)
-vecRotateRight {A} {m} n x∷xs =
-  let commuted   = vecCommuteSize n m x∷xs
-      rotated    = vecRotateLeft {A} {n} m commuted
-      recommuted = vecCommuteSize m n rotated
-  in  recommuted
+rotateLeft : {A : Set} → {w : ℕ} → {w≢0 : NonZero w} → ℕ → Vec A w → Vec A w
+rotateLeft {A} {w} {w≢0} n vec = rotate {A} {w} {w≢0} true n vec
 
-foo : Vec Nat 8
-foo = vecRotateRight 3 (0 ∷ 1 ∷ 2 ∷ 3 ∷ 4 ∷ 5 ∷ 6 ∷ 7 ∷ [])
-  
-  
+rotateRight : {A : Set} → {w : ℕ} → {w≢0 : NonZero w} → ℕ → Vec A w → Vec A w
+rotateRight {A} {w} {w≢0} n vec = rotate {A} {w} {w≢0} false n vec
+
+foo : Vec ℕ 5
+foo = rotateRight 2 (1 ∷ 2 ∷ 3 ∷ 4 ∷ 5 ∷ [])
+
+imap : {A : Set} → {B : Set} → {n : ℕ} → (ℕ → A → B) → Vec A n → Vec B n
+imap {A} {B} {n} f = go 0 where
+  go : {n : ℕ} → ℕ → Vec A n → Vec B n
+  go n []       = []
+  go n (x ∷ xs) = f n x ∷ go (suc n) xs
+
+imap₂ : {A : Set} → {B : Set} → {w : ℕ} → {h : ℕ} → (ℕ → ℕ → A → B) → Vec (Vec A w) h → Vec (Vec B w) h
+imap₂ f mat = imap (λ y row → imap (λ x v → f x y v) row) mat
+
+generate : {A : Set} → {n : ℕ} → (ℕ → A) → Vec A n
+generate f = tabulate (λ i → f (toℕ i))
+
+generate₂ : {A : Set} → {w : ℕ} → {h : ℕ} → (ℕ → ℕ → A) → Vec (Vec A w) h
+generate₂ {A} {w} {h} f = generate {n = h} (λ y → (generate {n = w} (λ x → f x y)))
