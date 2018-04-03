@@ -14,11 +14,17 @@ open import Data.Product
 open import Relation.Binary.PropositionalEquality
 open import Relation.Nullary.Decidable
 
-call : {a : Set} → ℕ → (a → a) → a → a
-call zero    f x = x
-call (suc n) f x = f (call n f x)
+the : (A : Set) → (x : A) → A
+the A x = x
 
-NonZero : ℕ -> Set
+icall : {A : Set} → (n : ℕ) → (Fin n → A → A) → A → A
+icall zero    f x = x
+icall (suc n) f x = icall n (λ w → f (suc w)) (f zero x)
+
+call : {A : Set} → ℕ → (A → A) → A → A
+call n f = icall n (λ i → f)
+
+NonZero : ℕ → Set
 NonZero n = False (n ≟ 0)
 
 roundLookup : {A : Set} → {w : ℕ} → {w≢0 : NonZero w} → ℕ → Vec A w → A
@@ -26,6 +32,19 @@ roundLookup {A} {w} {w≢0} n vec = lookup (_mod_ n w {≢0 = w≢0}) vec
 
 roundLookup₂ : {A : Set} → {w : ℕ} → {w>0 : NonZero w} → {h : ℕ} → {h>0 : NonZero h} → ℕ → ℕ → Vec (Vec A w) h → A
 roundLookup₂ {A} {w} {w≢0} {h} {h≢0} x y mat = roundLookup {w = w} {w≢0 = w≢0} x (roundLookup {w = h} {w≢0 = h≢0} y mat)
+
+applyAt : {A : Set} → {w : ℕ} → Fin w → (A → A) → Vec A w → Vec A w
+applyAt zero    f (v ∷ vec) = f v ∷ vec
+applyAt (suc x) f (v ∷ vec) = v ∷ applyAt x f vec
+
+applyAt₂ : {A : Set} → {w : ℕ} → {h : ℕ} → Fin w → Fin h → (A → A) → Vec (Vec A w) h → Vec (Vec A w) h
+applyAt₂ x y f mat = applyAt y (applyAt x f) mat
+
+setAt : {A : Set} → {w : ℕ} → Fin w → A → Vec A w → Vec A w
+setAt x v = applyAt x (λ v₂ → v)
+
+setAt₂ : {A : Set} → {w : ℕ} → {h : ℕ} → Fin w → Fin h → A → Vec (Vec A w) h → Vec (Vec A w) h
+setAt₂ x y v = applyAt₂ x y (λ v₂ → v)
 
 diff : {a : ℕ} → {b : Fin a} → ∃ λ c → toℕ b + c ≡ a
 diff {zero}  {()}

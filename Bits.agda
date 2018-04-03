@@ -8,6 +8,28 @@ data Bit : Set where
   O : Bit
   I : Bit
 
+bitNot : Bit → Bit
+bitNot O = I
+bitNot I = O
+
+bitXor : Bit → Bit → Bit
+bitXor O O = O
+bitXor O I = I
+bitXor I O = I
+bitXor I I = O
+
+bitAnd : Bit → Bit → Bit
+bitAnd O O = O
+bitAnd O I = O
+bitAnd I O = O
+bitAnd I I = I
+
+bitOr : Bit → Bit → Bit
+bitOr O O = O
+bitOr O I = I
+bitOr I O = I
+bitOr I I = I
+
 Bits : ℕ → Set
 Bits n = Vec Bit n
 
@@ -17,33 +39,25 @@ O∷ xxs = O ∷ xxs
 I∷ : {n : ℕ} → Bits n → Bits (suc n)
 I∷ xxs = I ∷ xxs
 
+op₁ : {n : ℕ} → (Bit → Bit) → Bits n → Bits n
+op₁ f []       = []
+op₁ f (x ∷ xs) = f x ∷ op₁ f xs
+
 op₂ : {n : ℕ} → (Bit → Bit → Bit) → Bits n → Bits n → Bits n
 op₂ f []       []       = []
 op₂ f (x ∷ xs) (y ∷ ys) = f x y ∷ op₂ f xs ys
 
+not : {n : ℕ} → Bits n → Bits n
+not = op₁ bitNot
+
 xor : {n : ℕ} → Bits n → Bits n → Bits n
-xor = op₂ bitXor where
-  bitXor : Bit → Bit → Bit
-  bitXor O O = O
-  bitXor O I = I
-  bitXor I O = I
-  bitXor I I = O
+xor = op₂ bitXor
 
 and : {n : ℕ} → Bits n → Bits n → Bits n
-and = op₂ bitAnd where
-  bitAnd : Bit → Bit → Bit
-  bitAnd O O = O
-  bitAnd O I = O
-  bitAnd I O = O
-  bitAnd I I = I
+and = op₂ bitAnd
 
 or : {n : ℕ} → Bits n → Bits n → Bits n
-or = op₂ bitOr where
-  bitOr : Bit → Bit → Bit
-  bitOr O O = O
-  bitOr O I = I
-  bitOr I O = I
-  bitOr I I = I
+or = op₂ bitOr
 
 inc : {n : ℕ} → Bits n → Bits n
 inc []       = []
