@@ -3,6 +3,9 @@ module Bits where
 open import Data.Vec
 open import Data.Nat
 open import Relation.Binary.PropositionalEquality
+open import Data.String
+open import Data.List hiding (and; or)
+open import Agda.Builtin.Char
 
 data Bit : Set where
   O : Bit
@@ -108,3 +111,19 @@ toℕ {n} = go 1 where
   go k []       = 0
   go k (O ∷ xs) = go (k * 2) xs
   go k (I ∷ xs) = go (k * 2) xs + k
+
+fromString : (str : String) → Bits (length (primStringToList str))
+fromString str = withCcs (primStringToList str) where
+  getBit : ℕ → ℕ → Bit
+  getBit zero    zero    = I
+  getBit zero    (suc m) = O
+  getBit (suc n) zero    = O
+  getBit (suc n) (suc m) = getBit n m
+  withCcs : (ccs : List Char) → Bits (length ccs)
+  withCcs []       = []
+  withCcs (c ∷ cs) = getBit 49 (primCharToNat c) ∷ withCcs cs
+
+toString : {n : ℕ} → Bits n → String
+toString []       = ""
+toString (O ∷ xs) = "0" Data.String.++ toString xs
+toString (I ∷ xs) = "1" Data.String.++ toString xs
